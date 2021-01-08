@@ -1,0 +1,3 @@
+[submodule "skySegmentation/inplace_abn"]
+	path = skySegmentation/inplace_abn
+	url = git@github.com:hluedemann/inplace_abn.git

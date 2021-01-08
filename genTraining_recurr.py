@@ -13,8 +13,8 @@ parser = argparse.ArgumentParser(
     description="create training/test/validation sets from video list"
 )
 
-parser.add_argument("--videoListPath", type=str,
-                    help="path to videos", required=True)
+parser.add_argument("--baseDir", type=str,
+                    help="path to folder containing the expected folders (mkv_videos, sbs_videos, sbs_frames)", required=True)
 parser.add_argument(
     "--fpsSingle", type=int, help="fps for single frame processing", default=2
 )
@@ -153,21 +153,17 @@ def processShotFile(video, shotFile):
 
 
 def main():
-    videoList = glob.glob(args.videoListPath + "*/")
+    path = os.path.join(args.baseDir, "sbs_frames/image_meta/")
+    videoList = glob.glob(path + "*/")
     origFramerate = 24
 
-    trainingSingleFile = (
-        args.videoListPath
-        + args.name
-        + "_"
-        + str(args.fpsSingle)
-        + "fpsSingle_"
-        + str(args.fpsRecurrent)
-        + "fps_"
-        + str(args.numRecurrent)
-        + "frames"
-        + "_single.txt"
-    )
+    trainingSingleFile = os.path.join(path, args.name
+                                      + "_"
+                                      + str(args.fpsSingle)
+                                      + "fbsSingle_"
+                                      + str(args.numRecurrent)
+                                      + "frames"
+                                      + "_single.txt")
 
     silentremove(trainingSingleFile)
 
@@ -183,8 +179,9 @@ def main():
             print(videoName + " not on whitelist")
             continue
         print("processing " + videoName)
+        print("")
         cutList = processShotFile(video, "shots.txt")
-        print(len(cutList))
+        # print(len(cutList))
         timingList = []
         with open(video + args.chapterTiming, "r") as fp:
             timingListTmp = fp.read().splitlines()

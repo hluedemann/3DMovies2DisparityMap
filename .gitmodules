@@ -1,3 +1,9 @@
 [submodule "skySegmentation/inplace_abn"]
 	path = skySegmentation/inplace_abn
 	url = git@github.com:hluedemann/inplace_abn.git
+[submodule "opticalFlow/pytorch-pwc"]
+	path = opticalFlow/pytorch-pwc
+	url = git@github.com:hluedemann/pytorch-pwc.git
+[submodule "opticalFlow/RAFT"]
+	path = opticalFlow/RAFT
+	url = git@github.com:hluedemann/RAFT.git

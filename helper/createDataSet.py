@@ -11,7 +11,7 @@ parser.add_argument("--baseDir", type=str, required=True,
 parser.add_argument("--name", type=str, required=True,
                     help="name of the txt file containing the names of the images belonging to the data set")
 parser.add_argument("--outDir", type=str, required=True,
-                    help="name of the output folder. location will be at ${baseDir}")
+                    help="name of the output folder")
 
 
 args = parser.parse_args()
@@ -29,12 +29,21 @@ def createDir(path):
 def main():
 
     # Create required folders
-    createDir(os.path.join(args.baseDir, args.outDir, "image_left"))
-    createDir(os.path.join(args.baseDir, args.outDir, "image_right"))
+    createDir(os.path.join(args.outDir, "image_left"))
+    createDir(os.path.join(args.outDir, "image_right"))
 
     dataFile = os.path.join(args.baseDir, "sbs_frames",
                             "image_meta", args.name + ".txt")
-    logFile = os.path.join(args.baseDir, args.outDir, "log.txt")
+    logFile = os.path.join(args.outDir, "log.txt")
+
+    # Just count the number of lines in order to see how many images need to copied
+    counter = 0
+    with open(dataFile, "r") as f:
+        
+        for _ in f:
+            counter += 1
+    print(f"Copying dataset of size: {counter}")
+
 
     with open(dataFile, "r") as f, open(logFile, "w+") as l:
 
@@ -49,9 +58,9 @@ def main():
                 args.baseDir, "sbs_frames", "image_right", line + ".jpg")
             outName = "out" + str(i).zfill(8)
             outPathLeft = os.path.join(
-                args.baseDir, args.outDir, "image_left", outName + ".jpg")
+                args.outDir, "image_left", outName + ".jpg")
             outPathRight = os.path.join(
-                args.baseDir, args.outDir, "image_right", outName + ".jpg")
+                args.outDir, "image_right", outName + ".jpg")
 
             shutil.copy(inPathLeft, outPathLeft)
             shutil.copy(inPathRight, outPathRight)

@@ -47,6 +47,20 @@ def get_file_name(path):
     return path.split("/")[-1].split(".")[0]
 
 
+def create_log_header(l):
+    l.write("## Log file for disparity filtering\n\n")
+    l.write(
+        f"# v_threshold: {args.v_threshold} - threshold vertical flow check\n")
+    l.write(
+        f"# max_v_fail: {args.max_v_fail} - max percentage of pixels that fail vertical flow check\n")
+    l.write(
+        f"# fbc_threshold: {args.fbc_threshold} - threshold for forward-backward check\n")
+    l.write(
+        f"# min_fbc_pass: {args.min_fbc_pass} - min percentage of pixels that pass forward-backward check\n")
+    l.write(
+        f"# range_threshold: {args.range_threshold} - threshold for horizontal flow range check\n\n")
+
+
 def get_disp_and_uncertainty(
     path,
     use_filtering,
@@ -74,6 +88,15 @@ def get_disp_and_uncertainty(
     assert len(path_flow_f) == len(
         path_sky_seg), "number of flow and sky segmentation not the same"
 
+    # Logfile to store which images are ignored and why
+    if use_filtering:
+        if not os.path.exists(os.path.join(path, "meta")):
+            os.makedirs(os.path.join(path, "meta"))
+        log_file = os.path.join(path, "meta", "disp_filter_log.txt")
+        l = open(log_file, "w")
+        create_log_header(l)
+        num_filterd = 0
+
     for file_forward, file_backward, file_sky in tqdm(zip(path_flow_f, path_flow_b, path_sky_seg), total=len(path_flow_f)):
 
         file_name_f = get_file_name(file_forward)
@@ -83,6 +106,8 @@ def get_disp_and_uncertainty(
         # Check if all the data belongs to the same original image
         assert file_name_f[0:11] == file_name_b[0:11] == file_name_s[0:11], f"file names for forwad and backward flow and\
             sky segmentation should be the same - {file_name_f[0:11]} | {file_name_b[0:11]} | {file_name_s[0:11]}"
+
+        out_file_name = file_name_f[0:11]
 
         # read flow
         u_fw, v_fw = read_flow(file_forward)
@@ -94,26 +119,30 @@ def get_disp_and_uncertainty(
             v_fail_fw = 1.0 * np.count_nonzero(check_v_fw) / v_fw.size
 
             if v_fail_fw >= max_v_fail:
-                print("v_fail_fw too large")
+                l.write(out_file_name + " v_fail_fw to large\n")
+                num_filterd += 1
                 continue
 
             check_v_bw = abs(v_bw) > v_threshold
             v_fail_bw = 1.0 * np.count_nonzero(check_v_bw) / v_bw.size
 
             if v_fail_bw >= max_v_fail:
-                print("v_fail_bw too large")
+                l.write(out_file_name + " v_fail_fw too large\n")
+                num_filterd += 1
                 continue
 
             range_fw = u_fw.max() - u_fw.min()
 
             if range_fw <= range_threshold:
-                print("range_u_fw too small")
+                l.write(out_file_name + " range_u_fw too small\n")
+                num_filterd += 1
                 continue
 
             range_bw = u_bw.max() - u_bw.min()
 
             if range_bw <= range_threshold:
-                print("range_u_bw too small")
+                l.write(out_file_name + " range_threshold too small\n")
+                num_filterd += 1
                 continue
 
         # compute uncertainty and disparity
@@ -136,7 +165,8 @@ def get_disp_and_uncertainty(
             fbc_pass = 1.0 * np.count_nonzero(valid) / uncertainty.size
 
             if fbc_pass <= min_fbc_pass:
-                print("fbc_pass too small")
+                l.write(out_file_name + " fbc_pass too small\n")
+                num_filterd += 1
                 continue
 
         disp = -u_fw
@@ -188,7 +218,6 @@ def get_disp_and_uncertainty(
         uncertainty[uncertainty > 255] = 255
 
         # save disparity and uncertainty
-        out_file_name = file_name_f[0:11]
 
         disp_out_path = os.path.join(
             out_path_disp, out_file_name + "_disp.png")
@@ -197,6 +226,12 @@ def get_disp_and_uncertainty(
         uncer_out_path = os.path.join(
             out_path_uncer, out_file_name + "_uncer.png")
         imageio.imwrite(uncer_out_path, uncertainty.astype(np.uint8))
+
+    # Log percentage of filterd images
+    if use_filtering:
+        l.write(
+            f"\nPercentage of filtered images: {num_filterd/len(path_flow_f)}\n")
+        l.close()
 
 
 if __name__ == "__main__":

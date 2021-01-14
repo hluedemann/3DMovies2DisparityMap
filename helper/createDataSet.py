@@ -31,19 +31,19 @@ def main():
     # Create required folders
     createDir(os.path.join(args.outDir, "image_left"))
     createDir(os.path.join(args.outDir, "image_right"))
+    createDir(os.path.join(args.outDir, "meta"))
 
     dataFile = os.path.join(args.baseDir, "sbs_frames",
                             "image_meta", args.name + ".txt")
-    logFile = os.path.join(args.outDir, "log.txt")
+    logFile = os.path.join(args.outDir, "meta", "image_mapping_log.txt")
 
     # Just count the number of lines in order to see how many images need to copied
     counter = 0
     with open(dataFile, "r") as f:
-        
+
         for _ in f:
             counter += 1
     print(f"Copying dataset of size: {counter}")
-
 
     with open(dataFile, "r") as f, open(logFile, "w+") as l:
 

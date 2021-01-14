@@ -9,13 +9,13 @@ import argparse
 import numpy as np
 import cv2
 from PIL import PngImagePlugin
+from PIL import Image
 import imageio
 import glob
 from tqdm import tqdm
 
 
 def read_flow(filename):
-
     flow = np.load(filename)
 
     u = flow[:, :, 0]
@@ -25,6 +25,13 @@ def read_flow(filename):
     assert u.shape[1] == 1880, f"width of flow needs to be 1880 but is {u.shape[1]}"
 
     return u, v
+
+
+def read_sky_segmentation(filename):
+    """Read the sky segmentation and convert it into a binary array indicating pixels belonging to the sky"""
+
+    array = np.asarray(Image.open(filename))
+    return np.where(array == 255, 1, 0)
 
 
 def create_dir(path):
@@ -59,20 +66,28 @@ def get_disp_and_uncertainty(
         glob.glob(os.path.join(path, "flow_forward", "*.npy")))
     path_flow_b = sorted(
         glob.glob(os.path.join(path, "flow_backward", "*.npy")))
+    path_sky_seg = sorted(
+        glob.glob(os.path.join(path, "sky_segmentation", "*.png")))
 
     assert len(path_flow_f) == len(
         path_flow_b), "number of forward and backward flows not the same"
+    assert len(path_flow_f) == len(
+        path_sky_seg), "number of flow and sky segmentation not the same"
 
-    for file_forward, file_backward in tqdm(zip(path_flow_f, path_flow_b), total=len(path_flow_f)):
+    for file_forward, file_backward, file_sky in tqdm(zip(path_flow_f, path_flow_b, path_sky_seg), total=len(path_flow_f)):
 
         file_name_f = get_file_name(file_forward)
-        file_name_r = get_file_name(file_backward)
+        file_name_b = get_file_name(file_backward)
+        file_name_s = get_file_name(file_sky)
 
-        assert file_name_f == file_name_r, f"file names for forwad and backward flow should be the same - {file_forward} | {file_backward}"
+        # Check if all the data belongs to the same original image
+        assert file_name_f[0:11] == file_name_b[0:11] == file_name_s[0:11], f"file names for forwad and backward flow and\
+            sky segmentation should be the same - {file_name_f[0:11]} | {file_name_b[0:11]} | {file_name_s[0:11]}"
 
         # read flow
         u_fw, v_fw = read_flow(file_forward)
         u_bw, v_bw = read_flow(file_backward)
+        sky_seg_idx = read_sky_segmentation(file_sky)
 
         if use_filtering:
             check_v_fw = abs(v_fw) > v_threshold
@@ -125,6 +140,9 @@ def get_disp_and_uncertainty(
                 continue
 
         disp = -u_fw
+
+        # use sky segmentation to set disparity of sky to minimum disp in image
+        disp[sky_seg_idx] = np.min(disp)
 
         # downsample disparity and uncertainty
         downscaling = 0.5
@@ -187,7 +205,7 @@ if __name__ == "__main__":
                                                   (full-resolution; i.e. 1880x800) forward / backward flow is located in \
                                                   the folders flow_forward and flow_backward.")
     parser.add_argument(
-        "path", type=str, help="path to folder of dataset - needs to contain flow_forward / flow_backward")
+        "path", type=str, help="path to folder of dataset - needs to contain flow_forward / flow_backward / sky_segmentation")
     parser.add_argument(
         "-f", "--filter", action="store_true", help="Apply filtering based on flow?")
     parser.add_argument(

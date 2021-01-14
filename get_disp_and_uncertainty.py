@@ -210,7 +210,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--range_threshold",
         type=float,
-        default=5,
+        default=10,
         help="threshold for horizontal flow range check")
     args = parser.parse_args()
 

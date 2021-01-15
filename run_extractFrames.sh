@@ -2,8 +2,8 @@
 
 # This script extracts the individual frames from the SBS videos und splits the left and right images
 
-video_name=$1  # Name of the SBS video (without the .mkv extension)
-base_dir="/home/hauke/Master/MasterThesis/data/3dmovies/"
+base_dir=$1    # base dir containing the folders mvc_videos, sbs_frames, sbs_videos
+video_name=$2  # Name of the SBS video (without the .mkv extension)
 frame_dir="sbs_frames/"
 output_dir="${base_dir}${frame_dir}"
 video_filename="${video_name}.mkv"

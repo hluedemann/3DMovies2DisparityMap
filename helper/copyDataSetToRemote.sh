@@ -1,12 +1,11 @@
 #!/bin/bash
 
 dataSetName=$1
-outDir=$2
 
 baseDir="/home/hauke/Master/MasterThesis/data/3dmovies/"
 # baseDir="/run/media/hauke/Elements1/"
 inDir="${baseDir}${dataSetName}"
-outDir="compgpu1:/export/scratch/hluedema/3dmovies/${outDir}"
+out="compgpu1:/export/scratch/hluedema/3dmovies/"
 
 
-rsync -a -P ${inDir} ${outDir} 
+rsync -a --info=progress2 ${inDir} ${out} 

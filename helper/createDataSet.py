@@ -47,7 +47,7 @@ def main():
 
     with open(dataFile, "r") as f, open(logFile, "w+") as l:
 
-        for i, line in tqdm(enumerate(f)):
+        for i, line in tqdm(enumerate(f), total=(counter)):
             line = line.rstrip()
             if not line:
                 continue

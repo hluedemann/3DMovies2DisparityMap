@@ -2,8 +2,8 @@
 
 # This script converts an mkv 3D movie given in the MVC format into the SBS format
 
-base_dir=$1   # Basedir containing the expected folders (mvc_videos, sbs_videos, sbs_frames)
-video_name=$2   # The name of the movie (without the .mkv extension)
+base_dir=/home/hauke/Master/MasterThesis/data/3dmovies/  #$1   # Basedir containing the expected folders (mvc_videos, sbs_videos, sbs_frames)
+video_name=$1   # The name of the movie (without the .mkv extension)
 
 input="${base_dir}mvc_videos/${video_name}.mkv"
 outputTitle="${video_name}_SBS"

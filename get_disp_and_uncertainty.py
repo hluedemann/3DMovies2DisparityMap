@@ -217,8 +217,8 @@ def get_disp_and_uncertainty(args):
     num_cores = multiprocessing.cpu_count()
     print(f"\nRunning on {num_cores} cores\n")
 
-    inputs = zip(path_flow_f[0:16], path_flow_b[0:16], path_sky_seg[0:16])
-    inputs = tqdm(inputs, total=len(path_flow_f[0:16]))
+    inputs = zip(path_flow_f, path_flow_b, path_sky_seg)
+    inputs = tqdm(inputs, total=len(path_flow_f))
 
     returns = Parallel(n_jobs=num_cores)(delayed(get_disp_uncer_sing_iter)(args, out_path_disp, out_path_uncer, i, j, k)
                                          for i, j, k in inputs)

@@ -66,7 +66,7 @@ def create_log_header(use_filtering, l):
         l.write("## No filtering used for last run!")
 
 
-def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, l, file_forward, file_backward, file_sky):
+def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, file_forward, file_backward, file_sky):
     file_name_f = get_file_name(file_forward)
     file_name_b = get_file_name(file_backward)
     file_name_s = get_file_name(file_sky)
@@ -87,30 +87,23 @@ def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, l, file_forwar
         v_fail_fw = 1.0 * np.count_nonzero(check_v_fw) / v_fw.size
 
         if v_fail_fw >= args.max_v_fail:
-            l.write(out_file_name + " v_fail_fw to large\n")
-            return 1
+            return out_file_name + " v_fail_fw to large\n"
 
         check_v_bw = abs(v_bw) > args.v_threshold
         v_fail_bw = 1.0 * np.count_nonzero(check_v_bw) / v_bw.size
 
         if v_fail_bw >= args.max_v_fail:
-            l.write(out_file_name + " v_fail_fw too large\n")
-            args.num_filterd += 1
-            return 1
+            return out_file_name + " v_fail_fw too large\n"
 
         range_fw = u_fw.max() - u_fw.min()
 
         if range_fw <= args.range_threshold:
-            l.write(out_file_name + " range_u_fw too small\n")
-            args.num_filterd += 1
-            return 1
+            return out_file_name + " range_u_fw too small\n"
 
         range_bw = u_bw.max() - u_bw.min()
 
         if range_bw <= args.range_threshold:
-            l.write(out_file_name + " range_threshold too small\n")
-            args.num_filterd += 1
-            return 1
+            return out_file_name + " range_threshold too small\n"
 
     # compute uncertainty and disparity
     ind_y, ind_x = np.indices(u_fw.shape, dtype=np.float32)
@@ -132,8 +125,7 @@ def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, l, file_forwar
         fbc_pass = 1.0 * np.count_nonzero(valid) / uncertainty.size
 
         if fbc_pass <= args.min_fbc_pass:
-            l.write(out_file_name + " fbc_pass too small\n")
-            return 1
+            return out_file_name + " fbc_pass too small\n"
 
     disp = -u_fw
 
@@ -193,7 +185,7 @@ def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, l, file_forwar
         out_path_uncer, out_file_name + "_uncer.png")
     imageio.imwrite(uncer_out_path, uncertainty.astype(np.uint8))
 
-    return 0
+    return "0"
 
 
 def get_disp_and_uncertainty(args):
@@ -222,22 +214,26 @@ def get_disp_and_uncertainty(args):
     l = open(log_file, "w")
     create_log_header(args.use_filtering, l)
 
-    num_cores = multiprocessing.cpu_count() - 5
+    num_cores = multiprocessing.cpu_count()
     print(f"\nRunning on {num_cores} cores\n")
 
-    inputs = zip(path_flow_f, path_flow_b, path_sky_seg)
+    inputs = zip(path_flow_f[0:16], path_flow_b[0:16], path_sky_seg[0:16])
+    inputs = tqdm(inputs, total=len(path_flow_f[0:16]))
 
-    with multiprocessing.Pool(processes=num_cores) as pool:
-        results = pool.map(get_disp_uncer_sing_iter, inputs, chunksize)
-
-#    returns = Parallel(n_jobs=num_cores)(delayed(get_disp_uncer_sing_iter)(args, out_path_disp, out_path_uncer, l, i, j, k)
-#                                         for i, j, k in inputs)
+    returns = Parallel(n_jobs=num_cores)(delayed(get_disp_uncer_sing_iter)(args, out_path_disp, out_path_uncer, i, j, k)
+                                         for i, j, k in inputs)
     # for file_forward, file_backward, file_sky in tqdm(zip(path_flow_f, path_flow_b, path_sky_seg), total=len(path_flow_f)):
+    num_filterd = 0
+    for res in returns:
+        if res == "0":
+            continue
+        l.write(res + "\n")
+        num_filterd += 1
 
     # Log percentage of filterd images
     if args.use_filtering:
         l.write(
-            f"\nPercentage of filtered images: {returns.count(1)/len(returns)}\n")
+            f"\nPercentage of filtered images: {num_filterd/len(returns)}")
         l.close()
 
 

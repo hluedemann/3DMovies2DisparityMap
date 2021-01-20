@@ -8,4 +8,4 @@ inDir="${baseDir}${dataSetName}"
 out="compgpu1:/export/scratch/hluedema/3dmovies/"
 
 
-rsync -a --info=progress2 ${inDir} ${out} 
+rsync -r -t -h --info=progress2 ${inDir} ${out} 

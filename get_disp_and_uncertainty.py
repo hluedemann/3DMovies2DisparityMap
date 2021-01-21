@@ -190,8 +190,8 @@ def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, file_forward, 
 
 def get_disp_and_uncertainty(args):
 
-    out_path_disp = os.path.join(args.path, "disparity")
-    out_path_uncer = os.path.join(args.path, "uncertainty")
+    out_path_disp = os.path.join(args.path, args.out_dir_disp)
+    out_path_uncer = os.path.join(args.path, args.out_dir_uncer)
     create_dir(out_path_disp)
     create_dir(out_path_uncer)
 
@@ -227,7 +227,7 @@ def get_disp_and_uncertainty(args):
     for res in returns:
         if res == "0":
             continue
-        l.write(res + "\n")
+        l.write(res)
         num_filterd += 1
 
     # Log percentage of filterd images
@@ -244,6 +244,10 @@ if __name__ == "__main__":
                                                   the folders flow_forward and flow_backward.")
     parser.add_argument(
         "path", type=str, help="path to folder of dataset - needs to contain flow_forward / flow_backward / sky_segmentation")
+    parser.add_argument(
+        "--out_dir_disp", type=str, default="disparity", help="name of the output dir for disparity (default=disparity)")
+    parser.add_argument(
+        "--out_dir_uncer", type=str, default="uncertainty", help="name of the output dir for uncertainty")
     parser.add_argument(
         "-f", "--use_filtering", action="store_true", help="Apply filtering based on flow?")
     parser.add_argument(

@@ -1,90 +1,207 @@
-# 3DVideos2Stereo
+# 3D Movies to Disparity Maps
 
-The provided scripts help to extract stereo data as described in our [paper](https://arxiv.org/abs/1907.01341):
+This repository provides scripts that allow to extract stereo data from 3D movies and convert them into disparity/depth maps.
+
+The scripts are based on the code provided in the repository [https://github.com/lasinger/3DVideos2Stereo](https://github.com/lasinger/3DVideos2Stereo). This repo implements the extraction of stereo data as described in the [paper](https://arxiv.org/abs/1907.01341):
 
 >Towards Robust Monocular Depth Estimation: Mixing Datasets for Zero-shot Cross-dataset Transfer  
 René Ranftl, Katrin Lasinger, David Hafner, Konrad Schindler, Vladlen Koltun
 
-Code for monocular depth estimation: [https://github.com/intel-isl/MiDaS](https://github.com/intel-isl/MiDaS)
+To check out the code of the paper go to: [https://github.com/intel-isl/MiDaS](https://github.com/intel-isl/MiDaS)
 
-## Frame Extraction
+## Overview
 
-There exist multiple different formats to store stereo videos.
+The extraction of disparity maps form 3D movies will be done in multiple steps. For every of these steps there are one or more scripts available. The following steps will be explained below
 
-For our frame extraction scripts we expect videos to be stored as 1080p SBS (side-by-side) MKVs, i.e. the image resolution should be 3840x1080px (2x 1920x1080).
-Additionally we extract chapter information using ffmpeg:
+[1. Extract 3D movies from blu ray](#Extract-3D-Movies-from-blu-ray)   
+[2. Convert to SBS format](#Convert-to-SBS-format)  
+[3. Extract left and right frames](#Extract-left-and-right-frames)   
+[4. Data Set Creation](#Data-Set-Creation)  
+[5. Compute Sky Segmentation](#Compute-sky-segmentation)  
+[6. Compute Optical Flow](#Compute-Optical-Flow)  
+[7. Disparity and Unvertainty Computation](#Disparity-and-Uncertainty-Computation)    
+
+## Assumed Folder Structure
+All the provided scripts assume the folder structure to be as follows: 
 
 ```
-ffmpeg -i ${video}.mkv 2>&1 | grep Chapter | grep start | awk '{print $4 $6}' >> ${outputFolder}chapter.txt
+${base_dir}
+|
+|---mvc_videos
+|   |
+|   |-- all videos in the MVC format
+|
+|---sbs_frames
+|   |
+|   |-- all the extracted frames
+|
+|---sbs_videos
+|   |
+|   |-- all the videos in SBS format
+```
+If a different folder structure is desired the paths in the scripts need to adjusted accordingly.
+
+## Extract 3D Movies from blu ray
+
+There are multiple formats to store 3D movies. Here it is assumed that the videos are given in the MVC format with a resolution 1080p, stored as MKVs.  
+
+In order to extract the videos from the blu ray meeting these requirements [makemkv](https://www.makemkv.com/) can be used.  
+
+On an arch based system this can be installed with:
+```
+sudo pacman -Syu makemkv
+```
+When using `makemkv` it is important to include the stream containing the 3D data which is not included by default (check the video stream `Mpeg4 MVC`).  
+
+Note:
+* Run makemkv with sudo
+* If the optical drive is not found try `sudo modprobe sg`
+* If the movie is already in SBS format this and the next step are not required
+
+## Convert to SBS format
+The next step is to convert the videos to the SBS (side by side) format. The resulting resolution should then be 3840x1080px (2x 1920x1080).  
+
+For this the script `convertToSBS.sh` is provided
+
+Requirements:  
+[ffmpeg](https://www.ffmpeg.org/):  
+* Install with: ``` sudo pacman -Syu ffmpeg```  
+
+[mkvtoolnix](https://mkvtoolnix.download/):  
+* Install with: ```sudo pacman -Syu mkvtoolnix-cli```  
+
+[FRIMDecode](https://forum.doom9.org/showthread.php?t=169651):
+* This only works on Windows but can be run on linux using [wine](https://www.winehq.org/).
+* Install wine with: ```sudo pacman -S wine winetricks wine-mono wine_gecko```
+
+
+Now run the script as follows:
+
+```
+./convertToSBS /path/to/base_dir nameOfMVCVideo /path/to/FRIMDecode32
+```
+The resulting SBS video will be saved in th folder `${base_dir}/sbs_videos/${video_name}_SBS/${video_name}_SBS.mkv`  
+The script will also save chapter information to the same location. This is required for later steps. 
+
+Note:  
+The mvc video needs to located in the folder `mvc_videos` located in the base dir (see [folder structure](#Assumed-Folder-Structure)). The name of the video needs to be given without the `.mkv` extension.
+
+## Extract left and right frames
+
+The next step is to extract the left and right frames from the SBS video.  
+
+For this the script `run_extractFrames.sh` can be used.
+
+```
+./run_extractFrames.sh /path/to/base_dir nameOfSBSVideo
 ```
 
-Script to extract left and right frames: *run_extractFrames.sh*
+This script will create the following folders inside sbs_frames: `image_left`, `image_right`, `image_meta`, `image_raw`  
 
-We extracted left and right frames (on full 24fps), centrally cropped to 1880x800 --> aspect ratio 2.35:1 (original input has varying aspect ratios and thus black bars on top/bottom and sometimes left/right due to the floating window effect).
+In order to remove black bars at the sides of the frames the extracted frames are centrally cropped to the resolution 1880x800.
 
-In case a video is stored in MVC format, the script *convertToSbs.sh* can be used to convert it to SBS format.
+Note:  
+Ths SBS video needs to be located in the folder sbs_videos inside the base dir (or the paths inside the script need to be adjusted).
 
-Requirements:
-- [ffmpeg](https://www.ffmpeg.org/)
+## Data Set Creation
 
-Addtional requirements for MVC to SBS conversion:
-- [mkvtoolnix](https://mkvtoolnix.download/)
-- [FRIMDecode](https://forum.doom9.org/showthread.php?t=169651) (Windows only, can be run on Linux using [wine](https://www.winehq.org/))
+The next step is to create a data set from all the extracted frames. This is done in order to remove undesired frames (frames from first and last chapter, frames at cuts). Also multiple frames are part of the same scene and are therefore highly correlated. Hence the complete set of frames is subsampled.  
 
-## Clip Extraction
+This process is explained in the [paper](https://arxiv.org/abs/1907.01341).
 
-To generate our 1 second clips sampled at 4fps for all training data according to our Supplementary (using shot detection but no disparity filtering) we used:
-```
-python genTraining_recurr.py --videoListPath 3DVideos/data/ --numRecurrent 24 --fpsRecurrent 24 --fpsSingle 4 --name training_set --blacklist testVid1,testVid2,valVid1,valVid2
-```
+To generate the training data set as discribed in this paper run.
 
-For our validation set we used the following:
-```
-python genTraining_recurr.py --videoListPath 3DVideos/data/ --numRecurrent 24 --fpsRecurrent 24 --fpsSingle 1 --name validation_set --whitelist valVid1,valVid2
+```python
+python genTraining_recurr.py --base_dir /path/to/base_dir --numRecurrent 24 --fpsRecurrent 24 --fpsSingle 4 --name training_set --blacklist testVid1,testVid2,valVid1,valVid2
 ```
 
-Data path and video names (for whitelist and blacklist) have to be adapted accordingly.
-
-## Sky Computation
-
-Please use your favorite segmenation algorithm for sky segmentation. We used Mapillary's Inplace ABN (https://github.com/mapillary/inplace_abn) and adapted *test_vistas_single_gpu.py*.
-Sky should have ID 27, e.g. in *get_pred_image* you can do:
-```
-mask = (tensor==27)
-img = Image.fromarray(mask.astype(np.uint8)*255, mode="L")
-```
-For faster processing we reduced the input image size from 2048 to 1024:
-```
-transformation = SegmentationTransform(
-        1024,
-        (0.41738699, 0.45732192, 0.46886091),
-        (0.25685097, 0.26509955, 0.29067996),
-    )
+For the validation set run:
+```python
+python genTraining_recurr.py --baseDir /path/to/base_dir --numRecurrent 24 --fpsRecurrent 24 --fpsSingle 1 --name validation_set --whitelist valVid1,valVid2
 ```
 
-## Flow Computation
+This will create a file inside `${base_dir}/sbs_frames/image_meta` containing the paths to all the images in the created training/validation set.  
 
-Please compute the backward and forward flow fields with your favorite flow algorithm (at full resolution; i.e. 1880x800).
-We used PWC-Net-Plus (https://github.com/NVlabs/PWC-Net).
+In order to copy all these files to a separate folder (required for the subsequent steps) the script `helper/createDataSet.py` can be used:  
 
-You can use the filelists "train.txt", "validation.txt", and "test.txt".
+```python
+python helper/createDataSet.py --baseDir /path/to/bas_dir --name nameDataSetListFile --outDir /path/to/out_dir
+```
+In process the log file `image_mapping_log.txt` will be created in the folder `meta/` specifying the mapping of each frame to it's new name.
 
-Please make sure that the resulting flow fields ("flow_backward" and "flow_forward") are in a similar folder structure as "image_left" and "image_right".
+Note:  
+The option `--name` requires only the name of the `.txt` file containing the paths to the images. The script will automatcally look inside the folder `sbs_frames/image_meta/nameDataSetListFile` for the name.
+
+## Compute Sky Segmentation  
+In order to set the depth of the sky manually a sky segmentation of the images is required.  
+
+In this repo a fork of Mapillary's Inplace ABN (https://github.com/mapillary/inplace_abn) algorithm is included. This repo provides scripts to compute the sky segmentation as rquired for the next steps.  
+
+First download the [pretrained model](https://drive.google.com/file/d/1SJJx5-LFG3J3M99TrPMU-z6ZmgWynxo-/view).
+
+Then run:
+```
+python skySegmentation/inplace_abn/scripts/test_vistas.py /path/to/model /path/to/in_dir /path/to/out_dir
+```  
+
+The script will compute the sky segmentation for all the images inside `in_dir`. With the folder structure form above the input and output needs to be set as follows:  
+* in_dir:  `/path/to/data_set/image_left`
+* out_dir: `/path/to/data_set/sky_segmentation`
+
+Note:  
+The sript will automatically run the segmentation on all available GPUs. To restric the number of GPUs run:
+```
+export CUDA_VISIBLE_DEVICES=1,2
+```
+or 
+```
+CUDA_VISIBLE_DEVICES=1,2 python skySegmentation/inplace_abn/scripts/test_vistas.py /path/to/model /path/to/in_dir /path/to/out_dir
+```
+
+This will run the code only on the GPUs with the id's 1 and 2.
+## Compute Optical Flow
+
+
+The next step is to compute the forward and backward optical flow between the left and right frames.  
+
+For this a fork of the [repe](https://github.com/princeton-vl/RAFT) is included as a submodule. The code implements the new optical flow algorithm presented in the  [RAFT: Recurrent All Pairs Field Transforms for Optical Flow](https://arxiv.org/pdf/2003.12039.pdf) paper.  
+
+First download pretrained models with:
+```
+python opticalFlow/RAFT/download_models.sh
+```
+
+Then run the optical flow computation with:
+```
+python opticalFlow/RAFT/getForwardBackwardFlow.py --mdoel /path/to/model --path /path/to/data_set 
+```
+
+This will create the folders `flow_forward` and `flow_backward` inside the folder of the date set.  
+
+Note:  
+* The pretrained model will be downloaded into `opticalFlow/RAFT/models/raft-things.pth`
+* The data set folder specified needs to contain the folders `image_left` and `image_right` as created with the script `helper/createDataSet.py`.
+
 
 ## Disparity and Uncertainty Computation
 
-The filelists "train.txt", "validation.txt", and "test.txt" are constructed in a way that only "good" flow fields are to be expected. Hence, you can create the disparity and uncertainty maps without a filtering of the flow fields as follows:
+The last step is to compute the disparity and uncertainty maps using the forward, backward flow and the sky segmentation.  
+
+For this run:
 
 ```python
-python get_disp_and_uncertainty.py
+python get_disp_and_uncertainty.py /path/to/data_set
 ```
 
-This script generates disparity and corresponding uncertainty maps and outputs them in the folders "disparity" and "uncertainty".
-Please note that those disparity and uncertainty maps are at half of the resolution (940x400). This is also the resolution that we use for testing.
+This script generates disparity and corresponding uncertainty maps and outputs them into the folders `disparity/` and `uncertainty/`.
+These maps are saved with half the resolution (940x400).  
 
-If you need to enable an explicit flow filtering, you can use the option "--filter".
+When explicit filtering of the disparity maps is desired use the option `--filter` (see the script for parameters that can be specified for the filtering).  
+If filtering is activated the log file `disp_filter_log.txt` is created in the `meta/` folder storing information about frames that were rejected due to filtering. 
 
 ## Data Reading
+
+The generated disparity and uncertainty maps can be read as follows.
 
 ### Read Disparity
 
@@ -106,7 +223,7 @@ uncertainty = 0.1 * uncertainty
 
 ## Citation
 
-Please cite our paper if you use this code in your research:
+As mentioned above this code is based on a repository which was created in conjunction with a paper. Please cite this paper if you use this code in research.
 ```
 @article{Ranftl2019,
 	author    = {Ren\'{e} Ranftl and Katrin Lasinger and David Hafner and Konrad Schindler and Vladlen Koltun},

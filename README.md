@@ -93,7 +93,7 @@ The next step is to extract the left and right frames from the SBS video.
 For this the script `run_extractFrames.sh` can be used.
 
 ```
-./run_stractFrames.sh /path/to/base_dir nameOfSBSVideo
+./run_extractFrames.sh /path/to/base_dir nameOfSBSVideo
 ```
 
 This script will create the following folders inside sbs_frames: `image_left`, `image_right`, `image_meta`, `image_raw`  

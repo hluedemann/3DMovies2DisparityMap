@@ -12,7 +12,7 @@ import cv2
 from random import shuffle
 from shutil import copyfile
 
-from helper.utils import silentremove, processShotFile
+from helper.helpers import silentremove, processShotFile
 
 parser = argparse.ArgumentParser(
     description="create training/test/validation sets from video list"
@@ -21,9 +21,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--baseDir", type=str,
                     help="path to folder containing the expected folders (mkv_videos, sbs_videos, sbs_frames)", required=True)
 parser.add_argument(
-    "--fps", type=int, help="fps of the extracted sequences", default=4)
+    "--fps", type=int, help="fps of the extracted sequences", default=2)
 parser.add_argument(
-    "--min_frames", type=int, help="minimum number of frames of sequences (depends on --fps)", default=40)
+    "--min_frames", type=int, help="minimum number of frames of sequences (depends on --fps)", default=30)
 parser.add_argument(
     "--chapterTiming",
     type=str,

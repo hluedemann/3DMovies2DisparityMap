@@ -8,7 +8,7 @@ video_name=$1   # The name of the movie (without the .mkv extension)
 input="${base_dir}mvc_videos/${video_name}.mkv"
 outputTitle="${video_name}_SBS"
 outputFolder="${base_dir}sbs_videos/${outputTitle}/"
-FRIMDecode="/home/hauke/Master/MasterThesis/FRIM_x86_version_1.31/FRIMDecode32"  # Path to the binary of FRIMDecode
+FRIMDecode="/home/hauke/Master/MasterThesis/depth_data_3DMovie/FRIM_x86_version_1.31/FRIMDecode32"  # Path to the binary of FRIMDecode
 
 echo "Converting ${input} to SBS format."
 

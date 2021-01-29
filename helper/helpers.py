@@ -3,6 +3,15 @@ import os
 import errno
 
 
+def createDir(path, verbose=True):
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError:
+        print(f"Failed to create dir: {path}")
+
+    if verbose:
+        print(f"Created dir: {path}")
+
 
 def silentremove(filename):
     try:

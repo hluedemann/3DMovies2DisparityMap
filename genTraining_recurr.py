@@ -8,7 +8,7 @@ import cv2
 from random import shuffle
 from shutil import copyfile
 
-from helper.utils import processShotFile, silentremove
+from helper.helpers import processShotFile, silentremove
 
 parser = argparse.ArgumentParser(
     description="create training/test/validation sets from video list"

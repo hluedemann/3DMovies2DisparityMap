@@ -178,11 +178,11 @@ def get_disp_uncer_sing_iter(args, out_path_disp, out_path_uncer, file_forward, 
     # save disparity and uncertainty
 
     disp_out_path = os.path.join(
-        out_path_disp, out_file_name + "_disp.png")
+        out_path_disp, out_file_name + ".png")
     imageio.imwrite(disp_out_path, disp, pnginfo=meta, prefer_uint8=False)
 
     uncer_out_path = os.path.join(
-        out_path_uncer, out_file_name + "_uncer.png")
+        out_path_uncer, out_file_name + ".png")
     imageio.imwrite(uncer_out_path, uncertainty.astype(np.uint8))
 
     return "0"

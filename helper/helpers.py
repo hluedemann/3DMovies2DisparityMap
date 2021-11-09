@@ -35,3 +35,7 @@ def processShotFile(video, shotFile):
                 pts_time = float(line[idx + 13: idx + 13 + 8])
                 cutList.append(pts_time)
     return cutList
+
+def truncate(num, n):
+    integer = int(num * (10**n))/(10**n)
+    return float(integer)

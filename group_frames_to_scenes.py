@@ -160,6 +160,23 @@ def run(args):
         outFile = os.path.join(args.baseDir,
                                "sbs_frames/image_meta/",
                                videoName, "sceneFramesRaw.json")
+        
+        max = 0
+        num = 0
+        total = 0
+        name = ""
+        for keys in chapterSceneFrames.keys():
+            for k in chapterSceneFrames[keys].keys():
+                total += 1
+                if len(chapterSceneFrames[keys][k]) > max:
+                    max = len(chapterSceneFrames[keys][k])
+                    name = keys + "  " + k
+                if len(chapterSceneFrames[keys][k])/24 > 1:
+                    num += 1
+        print(max/24)
+        print(num)
+        print(total)
+        print(name)
 
         with open(outFile, "w+") as fp:
             json.dump(chapterSceneFrames, fp, indent=True)
